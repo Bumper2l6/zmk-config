@@ -1,0 +1,144 @@
+/*
+ * Logitech Cordless Desktop Comfort Laser converti en Bluetooth
+ * ProMicro nRF52840 (nice!nano v2) + 2 x 74HC595 + écran nice!view
+ *
+ * Bus SPI partagé : 017 = données (écran DI + 595-A broche 14)
+ *                   020 = horloge (écran CLK + broches 11 des deux 595)
+ *                   006 = CS de l'écran, 022 = verrou des 595 (broches 12)
+ */
+
+#include <dt-bindings/zmk/matrix_transform.h>
+
+&pinctrl {
+    spi0_default: spi0_default {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 0, 20)>,
+                <NRF_PSEL(SPIM_MOSI, 0, 17)>,
+                <NRF_PSEL(SPIM_MISO, 0, 25)>;
+        };
+    };
+    spi0_sleep: spi0_sleep {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 0, 20)>,
+                <NRF_PSEL(SPIM_MOSI, 0, 17)>,
+                <NRF_PSEL(SPIM_MISO, 0, 25)>;
+            low-power-enable;
+        };
+    };
+};
+
+/* Le bus I2C utilise les mêmes broches (017/020) : on le coupe */
+&pro_micro_i2c {
+    status = "disabled";
+};
+
+nice_view_spi: &spi0 {
+    status = "okay";
+    compatible = "nordic,nrf-spim";
+    pinctrl-0 = <&spi0_default>;
+    pinctrl-1 = <&spi0_sleep>;
+    pinctrl-names = "default", "sleep";
+    /* index 0 : écran nice!view (CS actif haut), index 1 : verrou des 74HC595 */
+    cs-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>, <&gpio0 22 GPIO_ACTIVE_LOW>;
+
+    shifter: 595@1 {
+        compatible = "zmk,gpio-595";
+        status = "okay";
+        gpio-controller;
+        spi-max-frequency = <1000000>;
+        reg = <1>;
+        #gpio-cells = <2>;
+        ngpios = <16>;
+    };
+};
+
+/ {
+    chosen {
+        zmk,kscan = &kscan0;
+        zmk,matrix-transform = &default_transform;
+    };
+
+    kscan0: kscan {
+        compatible = "zmk,kscan-gpio-matrix";
+        diode-direction = "col2row";
+        /* anti-rebond un peu plus long que par défaut (barre d'espace sensible) */
+        debounce-press-ms = <8>;
+        debounce-release-ms = <8>;
+
+        col-gpios =
+            <&shifter 0 GPIO_ACTIVE_HIGH>,   /* 595-A Q0 = contact J1 1 */
+            <&shifter 1 GPIO_ACTIVE_HIGH>,   /* 595-A Q1 = contact J1 2 */
+            <&shifter 2 GPIO_ACTIVE_HIGH>,   /* 595-A Q2 = contact J1 4 */
+            <&shifter 3 GPIO_ACTIVE_HIGH>,   /* 595-A Q3 = contact J1 5 */
+            <&shifter 4 GPIO_ACTIVE_HIGH>,   /* 595-A Q4 = contact J1 6 */
+            <&shifter 5 GPIO_ACTIVE_HIGH>,   /* 595-A Q5 = contact J1 7 */
+            <&shifter 6 GPIO_ACTIVE_HIGH>,   /* 595-A Q6 = contact J1 8 */
+            <&shifter 7 GPIO_ACTIVE_HIGH>,   /* 595-A Q7 = contact J1 9 */
+            <&shifter 8 GPIO_ACTIVE_HIGH>,   /* 595-B Q0 = contact J1 10 */
+            <&shifter 9 GPIO_ACTIVE_HIGH>,   /* 595-B Q1 = contact J1 11 */
+            <&shifter 10 GPIO_ACTIVE_HIGH>,   /* 595-B Q2 = contact J1 12 */
+            <&shifter 11 GPIO_ACTIVE_HIGH>,   /* 595-B Q3 = contact J1 13 */
+            <&shifter 12 GPIO_ACTIVE_HIGH>,   /* 595-B Q4 = contact J1 14 */
+            <&shifter 13 GPIO_ACTIVE_HIGH>,   /* 595-B Q5 = contact J1 23 */
+            <&shifter 14 GPIO_ACTIVE_HIGH>,   /* 595-B Q6 = contact J1 24 */
+            <&shifter 15 GPIO_ACTIVE_HIGH>,   /* 595-B Q7 = contact J1 25 */
+            <&gpio0 29 GPIO_ACTIVE_HIGH>,   /* 029 = contact J1 26 */
+            <&gpio1 15 GPIO_ACTIVE_HIGH>    /* 115 = contact J1 3 */
+            ;
+
+        row-gpios =
+            <&gpio0 8 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,   /* 008 = contact J1 15 */
+            <&gpio0 24 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,   /* 024 = contact J1 16 */
+            <&gpio1 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,   /* 100 = contact J1 17 */
+            <&gpio0 11 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,   /* 011 = contact J1 18 */
+            <&gpio0 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,   /* 002 = contact J1 19 */
+            <&gpio1 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,   /* 104 = contact J1 20 */
+            <&gpio1 6 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>,   /* 106 = contact J1 21 */
+            <&gpio0 31 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>    /* 031 = contact J1 22 */
+            ;
+    };
+
+    /* 8 lignes x 18 colonnes. Même ordre que dans config/logitech_comfort.keymap */
+    default_transform: keymap_transform_0 {
+        compatible = "zmk,matrix-transform";
+        rows = <8>;
+        columns = <18>;
+        map = <
+            /* Touches spéciales (en haut) */
+            RC(0,16)  RC(2,8)  RC(5,15)  RC(5,0)  RC(3,8)  RC(1,16)
+            RC(0,0)  RC(1,0)  RC(2,14)  RC(2,16)  RC(2,0)  RC(5,16)
+            /* Rangée des fonctions */
+            RC(0,1)  RC(0,17)  RC(1,17)  RC(0,13)  RC(1,13)  RC(0,5)
+            RC(1,5)  RC(0,4)  RC(1,4)  RC(0,3)  RC(1,3)  RC(0,12)
+            RC(1,12)
+            /* Rangée des chiffres */
+            RC(1,1)  RC(2,1)  RC(3,17)  RC(0,2)  RC(0,6)  RC(1,6)
+            RC(0,7)  RC(1,7)  RC(1,2)  RC(2,4)  RC(2,3)  RC(5,4)
+            RC(2,5)  RC(5,5)
+            /* Rangée a z e r t y */
+            RC(5,1)  RC(3,1)  RC(4,17)  RC(5,2)  RC(2,6)  RC(5,6)
+            RC(2,7)  RC(5,7)  RC(2,2)  RC(3,4)  RC(7,3)  RC(4,4)
+            RC(3,5)  RC(7,5)
+            /* Rangée q s d f g */
+            RC(5,11)  RC(4,1)  RC(6,17)  RC(4,2)  RC(3,6)  RC(4,6)
+            RC(3,7)  RC(4,7)  RC(3,2)  RC(6,4)  RC(3,3)  RC(4,3)
+            RC(6,10)
+            /* Rangée w x c v b */
+            RC(3,0)  RC(6,1)  RC(7,1)  RC(7,17)  RC(6,2)  RC(6,6)
+            RC(7,6)  RC(6,7)  RC(7,7)  RC(7,2)  RC(7,4)  RC(6,3)
+            RC(7,0)
+            /* Rangée du bas */
+            RC(3,16)  RC(2,15)  RC(4,8)  RC(1,14)  RC(6,8)  RC(5,14)
+            RC(1,9)  RC(7,16)
+            /* Bloc de navigation */
+            RC(2,12)  RC(5,12)  RC(2,13)  RC(2,17)  RC(5,13)  RC(5,17)
+            RC(0,9)  RC(0,15)  RC(0,10)  RC(7,8)
+            /* Flèches */
+            RC(2,10)  RC(6,5)  RC(5,3)  RC(0,14)
+            /* Pavé numérique */
+            RC(1,8)  RC(2,9)  RC(5,9)  RC(0,8)  RC(3,9)  RC(3,12)
+            RC(3,13)  RC(6,9)  RC(4,9)  RC(4,12)  RC(4,13)  RC(7,9)
+            RC(6,12)  RC(6,13)  RC(1,15)  RC(7,12)  RC(7,13)
+        >;
+    };
+};
