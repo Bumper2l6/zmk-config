@@ -1,7 +1,7 @@
 if SHIELD_LOGITECH_COMFORT
 
 config ZMK_KEYBOARD_NAME
-    default "Logitech Comfort"
+    default "Bumper Keyboard"
 
 config SPI
     default y
