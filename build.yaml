@@ -1,6 +1,9 @@
-# Ce que GitHub compile. Le 2e firmware sert seulement à effacer les appairages Bluetooth en cas de souci.
 include:
   - board: nice_nano_v2
     shield: logitech_comfort nice_view
+  - board: nice_nano_v2
+    shield: logitech_comfort nice_view
+    snippet: zmk-usb-logging
+    artifact-name: bumper-debug
   - board: nice_nano_v2
     shield: settings_reset
